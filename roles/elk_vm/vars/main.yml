@@ -1,8 +1,8 @@
-vm_host_int: "enp1s0"
-vm_host_ip: "192.168.150.13"
-vm_host_addr: "192.168.150.13/24"
-vm_host_gw: "192.168.150.1"
-vm_host_dns: "8.8.8.8"
+vm_host_int: "eth0"
+vm_host_ip: "192.168.100.50"
+vm_host_addr: "192.168.100.50/24"
+vm_host_gw: "192.168.100.1"
+vm_host_dns: "192.0.2.14"
 
 stack_version: 8.14.3
 cert_pass: "elastic123"
