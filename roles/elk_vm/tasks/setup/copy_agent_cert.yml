@@ -1,0 +1,5 @@
+- name: Fetch the elasticsearch-ca.pem file from remote host
+  fetch:
+    src: /usr/share/elasticsearch/elasticsearch-ca.pem
+    dest: "{{ role_path }}/../../"
+    flat: yes

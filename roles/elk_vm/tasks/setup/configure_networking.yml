@@ -1,0 +1,28 @@
+---
+- name: Write new network configuration
+  template:
+    src: network_interfaces.j2
+    dest: /etc/network/interfaces
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart Networking
+
+- name: Extract DNS nameserver from network configuration
+  command: "awk '/dns-nameservers/ {print $2}' /etc/network/interfaces"
+  register: dns_nameserver
+
+- name: Overwrite /etc/resolv.conf
+  copy:
+    content: "nameserver {{ dns_nameserver.stdout }}\n"
+    dest: /etc/resolv.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart systemd-resolved
+
+- name: Ensure /etc/resolv.conf is immutable
+  command: "chattr +i /etc/resolv.conf"
+  notify: Restart Networking
+
+- meta: flush_handlers

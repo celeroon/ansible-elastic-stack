@@ -1,0 +1,42 @@
+---
+- name: Restart SSH
+  systemd:
+    name: sshd
+    state: restarted
+
+- name: Restart Networking
+  systemd:
+    name: networking
+    state: restarted
+
+- name: Restart systemd-resolved
+  service:
+    name: systemd-resolved
+    state: restarted
+
+- name: Reload systemd
+  ansible.builtin.command: systemctl daemon-reload
+
+- name: Enable elasticsearch service
+  ansible.builtin.service:
+    name: elasticsearch
+    enabled: yes
+
+- name: Start elasticsearch service
+  ansible.builtin.service:
+    name: elasticsearch
+    state: started
+
+- name: Enable kibana service
+  ansible.builtin.service:
+    name: kibana
+    enabled: yes
+
+- name: Start kibana service
+  ansible.builtin.service:
+    name: kibana
+    state: started
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes

@@ -1,0 +1,7 @@
+- name: Check Kibana status using curl
+  shell: "curl -I -s --cacert {{ ca_cert_path }} https://{{ vm_host_ip }}:5601 | grep -q 'HTTP/1.1 302 Found'"
+  register: kibana_check
+  ignore_errors: yes
+  retries: 30
+  delay: 10
+  until: kibana_check.rc == 0

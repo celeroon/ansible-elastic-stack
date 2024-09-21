@@ -1,0 +1,84 @@
+---
+- name: Copy fleet-server.crt to /etc/ssl/certs
+  copy:
+    src: /usr/share/elasticsearch/certs/fleet-server/fleet-server.crt
+    dest: /etc/ssl/certs/fleet-server.crt
+    owner: root
+    group: root
+    mode: '0660'
+    remote_src: yes
+
+- name: Copy fleet-server.key to /etc/ssl/certs
+  copy:
+    src: /usr/share/elasticsearch/certs/fleet-server/fleet-server.key
+    dest: /etc/ssl/certs/fleet-server.key
+    owner: root
+    group: root
+    mode: '0660'
+    remote_src: yes
+
+- name: Create service token
+  uri:
+    url: "https://{{ vm_host_ip }}:9200/_security/service/elastic/fleet-server/credential/token"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+    user: "elastic"
+    password: "{{ elastic_pass }}"
+    force_basic_auth: yes
+    validate_certs: yes
+    ca_path: "{{ ca_cert_path }}"
+  register: token_response
+
+- name: Debug service token response
+  debug:
+    msg: "Token Response: {{ token_response.json }}"
+
+- name: Extract service token value
+  set_fact:
+    service_token: "{{ token_response.json.token.value }}"
+
+- name: Debug service token value
+  debug:
+    msg: "Service Token: {{ service_token }}"
+
+- name: Retrieve certificate fingerprint
+  command: openssl x509 -fingerprint -sha256 -noout -in {{ ca_cert_path }}
+  register: fingerprint_result
+  changed_when: false
+
+- name: Extract and format fingerprint value
+  set_fact:
+    ca_fingerprint: "{{ fingerprint_result.stdout.split('=')[1] | replace(':', '') }}"
+
+- name: Debug extracted fingerprint
+  debug:
+    msg: "CA Fingerprint: {{ ca_fingerprint }}"
+
+- name: Download Elastic Agent
+  get_url:
+    url: "https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ stack_version }}-linux-x86_64.tar.gz"
+    dest: "/tmp/elastic-agent-{{ stack_version }}-linux-x86_64.tar.gz"
+    mode: 0644
+
+- name: Extract Elastic Agent
+  ansible.builtin.unarchive:
+    src: "/tmp/elastic-agent-{{ stack_version }}-linux-x86_64.tar.gz"
+    dest: "/tmp/"
+    remote_src: yes
+
+- name: Install Elastic Agent
+  command: >
+    ./elastic-agent install \
+    --url=https://{{ vm_host_ip }}:8220 \
+    --fleet-server-es=https://{{ vm_host_ip }}:9200 \
+    --fleet-server-service-token={{ service_token }} \
+    --fleet-server-policy=fleet-server-policy \
+    --fleet-server-es-ca-trusted-fingerprint={{ ca_fingerprint }} \
+    --certificate-authorities=/etc/kibana/certs/elasticsearch-ca.pem \
+    --fleet-server-es-ca=/etc/kibana/certs/elasticsearch-ca.pem \
+    --fleet-server-cert=/etc/ssl/certs/fleet-server.crt \
+    --fleet-server-cert-key=/etc/ssl/certs/fleet-server.key \
+    --force
+  args:
+    chdir: "/tmp/elastic-agent-{{ stack_version }}-linux-x86_64"

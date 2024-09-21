@@ -1,0 +1,18 @@
+---
+- name: Copy elasticsearch-ca.pem to /etc/kibana/certs using shell
+  ansible.builtin.shell: |
+    cp {{ elasticsearch_tools_path }}/elasticsearch-ca.pem {{ kibana_config_path }}/certs/elasticsearch-ca.pem
+    chown root:kibana {{ kibana_config_path }}/certs/elasticsearch-ca.pem
+    chmod 0660 {{ kibana_config_path }}/certs/elasticsearch-ca.pem
+
+- name: Copy kibana-server.crt to /etc/kibana/certs using shell
+  ansible.builtin.shell: |
+    cp {{ elasticsearch_tools_path }}/certs/kibana/kibana.crt {{ kibana_config_path }}/certs/kibana.crt
+    chown root:kibana {{ kibana_config_path }}/certs/kibana.crt
+    chmod 0660 {{ kibana_config_path }}/certs/kibana.crt
+
+- name: Copy kibana-server.key to /etc/kibana/certs using shell
+  ansible.builtin.shell: |
+    cp {{ elasticsearch_tools_path }}/certs/kibana/kibana.key {{ kibana_config_path }}/certs/kibana.key
+    chown root:kibana {{ kibana_config_path }}/certs/kibana.key
+    chmod 0660 {{ kibana_config_path }}/certs/kibana.key

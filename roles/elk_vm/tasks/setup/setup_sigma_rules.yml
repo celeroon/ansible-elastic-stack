@@ -1,0 +1,63 @@
+---
+- name: Enable Elastic Default Rules
+  shell: |
+    curl --cacert {{ ca_cert_path }} -s -u "elastic:{{ elastic_pass }}" \
+        -XPUT -H "kbn-xsrf: kibana" \
+        -H "Content-type: application/json" \
+        "https://{{ vm_host_ip }}:5601/api/detection_engine/rules/prepackaged"
+  args:
+    executable: /bin/bash
+
+- name: Clone SigmaHQ Sigma repository
+  git:
+    repo: https://github.com/SigmaHQ/sigma.git
+    dest: /setup-vm/sigma
+    update: no
+
+- name: Install sigma-cli using pip
+  pip:
+    name: sigma-cli
+    executable: pip3
+  become_user: root
+
+- name: Install Elasticsearch plugin for sigma-cli
+  shell: |
+    sigma plugin install elasticsearch
+
+- name: Copy sigma_check.sh to /setup-vm/sigma
+  copy:
+    src: files/sigma_check.sh
+    dest: /setup-vm/sigma/sigma_check.sh
+    mode: '0755'
+
+- name: Execute sigma_check.sh
+  shell: ./sigma_check.sh
+  args:
+    chdir: /setup-vm/sigma/
+
+- name: Disable rules in all .ndjson files
+  shell: |
+    for file in /setup-vm/*.ndjson; do
+        if [[ -f "$file" ]]; then
+            sed -i 's/"enabled": true/"enabled": false/g' "$file"
+        fi
+    done
+  args:
+    executable: /bin/bash
+
+- name: Copy demo rules
+  template:
+    src: demo-rules.ndjson.j2
+    dest: /setup-vm/demo-rules.ndjson
+    mode: '0664'
+
+- name: Upload NDJSON (Sigma rules) files to Elasticsearch
+  shell: |
+    for file in /setup-vm/*.ndjson
+    do
+      curl --cacert {{ ca_cert_path }} -s -u "elastic:{{ elastic_pass }}" -X POST -H "kbn-xsrf: true" -H "Content-Type: multipart/form-data" \
+          --form "file=@${file}" \
+          "https://{{ vm_host_ip }}:5601/api/detection_engine/rules/_import" > /dev/null
+    done
+  args:
+    executable: /bin/bash

@@ -1,0 +1,18 @@
+---
+- name: Generate Kibana token
+  ansible.builtin.shell: |
+    curl -s -X POST --cacert {{ ca_cert_path }} -u elastic:{{ elastic_pass }} https://{{ vm_host_ip }}:9200/_security/service/elastic/kibana/credential/token/kibana_token
+  register: api_response
+
+- name: Extract token value from JSON response
+  ansible.builtin.shell: |
+    echo '{{ api_response.stdout }}' | jq -r '.token.value'
+  register: token_value
+
+- name: Creating the Kibana keystore
+  ansible.builtin.shell: |
+    yes | sudo /usr/share/kibana/bin/kibana-keystore create > /dev/null 2>&1
+
+- name: Store the token value securely in Kibana keystore
+  ansible.builtin.shell: |
+    echo -n "{{ token_value.stdout }}" | /usr/share/kibana/bin/kibana-keystore add elasticsearch.serviceAccountToken -x

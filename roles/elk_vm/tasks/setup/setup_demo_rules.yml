@@ -1,0 +1,16 @@
+---
+- name: Copy demo rules
+  template:
+    src: demo-rules.ndjson.j2
+    dest: /setup-vm/demo-rules.ndjson
+    mode: '0664'
+  become: yes
+
+- name: Post rules file to Elasticsearch
+  shell: >
+    curl --cacert {{ ca_cert_path }} -u "elastic:{{ elastic_pass }}" -X POST -H "kbn-xsrf: true" -H "Content-Type: multipart/form-data"
+    --form "file=@/setup-vm/demo-rules.ndjson"
+    "https://{{ vm_host_ip }}:5601/api/detection_engine/rules/_import"
+  args:
+    executable: /bin/bash
+  become: yes

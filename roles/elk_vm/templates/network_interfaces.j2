@@ -1,0 +1,12 @@
+source-directory /etc/network/interfaces.d
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# The primary network interface
+auto {{ vm_host_int }}
+iface {{ vm_host_int }} inet static
+  address {{ vm_host_addr }}
+  gateway {{ vm_host_gw }}
+  dns-nameservers {{ vm_host_dns }}

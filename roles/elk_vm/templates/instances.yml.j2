@@ -1,0 +1,25 @@
+instances:
+  - name: es01
+    dns:
+      - localhost
+    ip:
+      - 127.0.0.1
+      - {{ vm_host_ip }}
+  - name: kibana
+    dns:
+      - localhost
+    ip:
+      - 127.0.0.1
+      - {{ vm_host_ip }}
+  - name: fleet-server
+    dns:
+      - localhost
+    ip:
+      - 127.0.0.1
+      - {{ vm_host_ip }}
+  - name: logstash
+    dns:
+      - localhost
+    ip:
+      - 127.0.0.1
+      - {{ vm_host_ip }}

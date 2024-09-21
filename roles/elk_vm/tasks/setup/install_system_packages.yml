@@ -1,0 +1,49 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install required packages
+  apt:
+    name:
+      - curl
+      - jq
+      - net-tools
+      - default-jre
+      - unzip
+      - apt-transport-https
+      - gpg
+      - git
+      - python3-pip
+    state: present
+  
+- name: Add Elasticsearch GPG key
+  apt_key:
+    url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    state: present
+    keyring: /usr/share/keyrings/elasticsearch-keyring.gpg
+  
+- name: Add Elasticsearch repository
+  apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main"
+    state: present
+    filename: elastic-8.x
+  
+- name: Update apt cache again after adding the Elasticsearch repository
+  apt:
+    update_cache: yes
+  
+- name: Install Elasticsearch
+  apt:
+    name: "elasticsearch={{ stack_version }}"
+    state: present
+  
+- name: Install Kibana
+  apt:
+    name: "kibana={{ stack_version }}"
+    state: present
+
+- name: Install Logstash
+  apt:
+    name: "logstash={{ logstash_version }}"
+    state: present

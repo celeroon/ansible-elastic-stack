@@ -1,0 +1,102 @@
+---
+- name: Generate CA certificate
+  command: bin/elasticsearch-certutil ca -out {{ elasticsearch_tools_path }}/elastic-stack-ca.p12 --pass {{ cert_pass }} -s
+  args:
+    chdir: "{{ elasticsearch_tools_path }}"
+  register: certutil_output
+  changed_when: "certutil_output.rc == 0"
+
+- name: Generate certificate for transport layer (elastic-certificates.p12)
+  command: bin/elasticsearch-certutil cert --ca {{ elasticsearch_tools_path }}/elastic-stack-ca.p12 -s -out {{ elasticsearch_tools_path }}/elastic-certificates.p12 --ca-pass {{ cert_pass }} --pass {{ cert_pass }}
+  args:
+    chdir: "{{ elasticsearch_tools_path }}"
+  register: certutil_output
+  changed_when: "certutil_output.rc == 0"
+
+- name: Write instances yaml file
+  template:
+    src: instances.yml.j2
+    dest: "{{ elasticsearch_tools_path }}/instances.yml"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Generate instance certificates
+  command: bin/elasticsearch-certutil cert -s -out {{ elasticsearch_tools_path }}/certs.zip --in {{ elasticsearch_tools_path }}/instances.yml --ca {{ elasticsearch_tools_path }}/elastic-stack-ca.p12 --pass {{ cert_pass }} --ca-pass {{ cert_pass }}
+  args:
+    chdir: "{{ elasticsearch_tools_path }}"
+  register: cert_output
+  changed_when: "cert_output.rc == 0"
+
+- name: Unzip the certs.zip file
+  unarchive:
+    src: "{{ elasticsearch_tools_path }}/certs.zip"
+    dest: "{{ elasticsearch_tools_path }}/certs"
+    remote_src: yes
+
+- name: Convert Kibana p12 to PEM (key)
+  command: openssl pkcs12 -in {{ elasticsearch_tools_path }}/certs/kibana/kibana.p12 -nocerts -out {{ elasticsearch_tools_path }}/certs/kibana/kibana.key -nodes -passin pass:{{ cert_pass }}
+  args:
+    creates: "{{ elasticsearch_tools_path }}/certs/kibana/kibana.key"
+
+- name: Convert Kibana p12 to PEM (crt)
+  command: openssl pkcs12 -in {{ elasticsearch_tools_path }}/certs/kibana/kibana.p12 -clcerts -nokeys -out {{ elasticsearch_tools_path }}/certs/kibana/kibana.crt -passin pass:{{ cert_pass }}
+  args:
+    creates: "{{ elasticsearch_tools_path }}/certs/kibana/kibana.crt"
+
+- name: Convert Fleet Server p12 to PEM (key)
+  command: openssl pkcs12 -in {{ elasticsearch_tools_path }}/certs/fleet-server/fleet-server.p12 -nocerts -out {{ elasticsearch_tools_path }}/certs/fleet-server/fleet-server.key -nodes -passin pass:{{ cert_pass }}
+  args:
+    creates: "{{ elasticsearch_tools_path }}/certs/fleet-server/fleet-server.key"
+
+- name: Convert Fleet Server p12 to PEM (crt)
+  command: openssl pkcs12 -in {{ elasticsearch_tools_path }}/certs/fleet-server/fleet-server.p12 -clcerts -nokeys -out {{ elasticsearch_tools_path }}/certs/fleet-server/fleet-server.crt -passin pass:{{ cert_pass }}
+  args:
+    creates: "{{ elasticsearch_tools_path }}/certs/fleet-server/fleet-server.crt"
+
+- name: Generate elasticsearch-ca.pem
+  shell: |
+    openssl pkcs12 -in {{ elasticsearch_tools_path }}/elastic-stack-ca.p12 -clcerts -nokeys -passin pass:{{ cert_pass }} \
+    | awk '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/' > {{ elasticsearch_tools_path }}/elasticsearch-ca.pem
+  args:
+    creates: "{{ elasticsearch_tools_path }}/elasticsearch-ca.pem"
+
+- name: Remove all files in /etc/elasticsearch/certs
+  ansible.builtin.find:
+    paths: "{{ elasticsearch_config_path }}/certs"
+    file_type: file
+  register: cert_files
+
+- name: Delete certificate files
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ cert_files.files }}"
+
+- name: Copy elastic-certificates.p12 to /etc/elasticsearch/certs/ using shell
+  ansible.builtin.shell: "cp {{ elasticsearch_tools_path }}/elastic-certificates.p12 {{ elasticsearch_config_path }}/certs/"
+
+- name: Ensure elastic-certificates.p12 is owned by root:elasticsearch
+  ansible.builtin.file:
+    path: /etc/elasticsearch/certs/elastic-certificates.p12
+    owner: root
+    group: elasticsearch
+    mode: '0660'
+
+- name: Copy elasticsearch-ca.pem to /certs
+  copy:
+    src: "{{ elasticsearch_tools_path }}/elasticsearch-ca.pem"
+    dest: "{{ elasticsearch_config_path }}/certs/elasticsearch-ca.pem"
+    owner: root
+    group: elasticsearch
+    mode: '0644'
+    remote_src: yes
+
+- name: Copy es01.p12 to /etc/elasticsearch/certs/http.p12
+  ansible.builtin.copy:
+    src: "{{ elasticsearch_tools_path }}/certs/es01/es01.p12"
+    dest: "{{ elasticsearch_config_path }}/certs/http.p12"
+    owner: root
+    group: elasticsearch
+    mode: '0660'
+    remote_src: yes

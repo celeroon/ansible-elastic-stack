@@ -1,0 +1,15 @@
+---
+- name: Move elasticsearch.yml config file and start service
+  template:
+    src: elasticsearch.yml.j2
+    dest: "{{ elasticsearch_config_path}}/elasticsearch.yml"
+    owner: root
+    group: elasticsearch
+    mode: '0644'
+  notify: 
+    - Reload systemd
+    - Enable elasticsearch service
+    - Start elasticsearch service
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers

@@ -1,0 +1,24 @@
+---
+- name: Clone FortiDragon repo
+  git:
+    repo: https://github.com/celeroon/fortinet-2-elasticsearch.git
+    dest: /setup-vm/fortinet-2-elasticsearch
+    update: no
+
+- name: Execute FortiDragon load.sh with interactive inputs (pipelines autosetup)
+  shell: |
+    echo -e "1\nhttps://{{ vm_host_ip }}:9200\nu\nelastic\n{{ elastic_pass }}\n" | ./load.sh
+  args:
+    chdir: /setup-vm/fortinet-2-elasticsearch
+    executable: /bin/bash
+  no_log: true
+
+- name: Upload FortiGate dashboards to Kibana
+  shell: |
+    curl -X POST --cacert {{ ca_cert_path }} -s -u "elastic:{{ elastic_pass }}" \
+        "https://{{ vm_host_ip }}:5601/api/saved_objects/_import" \
+        -H "kbn-xsrf: true" \
+        -H "Content-Type: multipart/form-data" \
+        -F "file=@/setup-vm/fortinet-2-elasticsearch/kibana/fortigate-ELK-8141.ndjson" > /dev/null
+  args:
+    executable: /bin/bash

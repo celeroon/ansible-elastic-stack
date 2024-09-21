@@ -1,0 +1,17 @@
+vm_host_int: "enp1s0"
+vm_host_ip: "192.168.150.13"
+vm_host_addr: "192.168.150.13/24"
+vm_host_gw: "192.168.150.1"
+vm_host_dns: "8.8.8.8"
+
+stack_version: 8.14.3
+cert_pass: "elastic123"
+elastic_pass: "vagrant"
+elasticsearch_tools_path: "/usr/share/elasticsearch"
+elasticsearch_config_path: "/etc/elasticsearch"
+cluster_name: "elk-lab"
+node_name: "elk_vm"
+kibana_config_path: "/etc/kibana"
+logstash_config_path: "/etc/logstash"
+ca_cert_path: "/usr/share/elasticsearch/elasticsearch-ca.pem"
+logstash_version: "1:8.14.3-1"

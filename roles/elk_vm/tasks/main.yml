@@ -1,0 +1,61 @@
+---
+- name: Configure SSH
+  include_tasks: setup/configure_ssh.yml
+
+- name: Configure Networking
+  include_tasks: setup/configure_networking.yml
+
+- name: Install system packages
+  include_tasks: setup/install_system_packages.yml
+
+- name: Setup directories
+  include_tasks: setup/setup_directories.yml
+
+- name: Elasticsearch generate certificates
+  include_tasks: setup/generate_elastic_certs.yml
+
+- name: Add Passwords to the Keystore
+  include_tasks: setup/add_passwords_to_keystore.yml
+
+- name: Configure and start elastcisearch
+  include_tasks: setup/copy_elasticsearch_config.yml
+
+- name: Copy agent cert for windows host
+  include_tasks: setup/copy_agent_cert.yml
+
+- name: Change elastic password
+  include_tasks: setup/change_elastic_password.yml
+
+- name: Import keystore 
+  include_tasks: setup/import_keystore.yml
+
+- name: Copy cert to kibana config file
+  include_tasks: setup/copy_kibana_certs.yml
+
+- name: Generate kibana token
+  include_tasks: setup/generate_kibana_token.yml
+
+- name: Setup kibana
+  include_tasks: setup/setup_kibana.yml
+
+- name: Kibana healthcheck
+  include_tasks: setup/kibana_healthcheck.yml
+
+- name: Setup Sigma rules
+  include_tasks: setup/setup_sigma_rules.yml
+
+- name: Setup fleet
+  include_tasks: setup/setup_fleet.yml
+
+- name: Install fleet server
+  include_tasks: setup/install_fleet_server.yml
+
+- name: Setup demo rules
+  include_tasks: setup/setup_demo_rules.yml
+
+# - name: Setup FortiDragon pipelines
+#   include_tasks: setup/setup_fortidragon_pipelines.yml
+
+- name: Setup logstash
+  include_tasks: setup/setup_logstash.yml
+

@@ -1,0 +1,55 @@
+input {
+
+    udp {
+        port => 5145
+        buffer_size => 131072
+#
+        add_field => {"[data_stream][type]" => "logs"}
+        add_field => {"[data_stream][dataset]" => "fortinet.fortigate"}
+        add_field => {"[data_stream][namespace]" => "default"}
+#
+        source_ip_fieldname => "[observer][ip]"
+        add_field => { "[logstash][hostname]" => "${HOSTNAME:no_logstash_hostname}" }
+        #tags => [ "fortianalyzer" ]
+    }
+
+}
+
+filter {
+    mutate {
+        add_field => ["[event][created]", "%{@timestamp}"] # event.created: when the event is created by logstash
+    }
+
+    grok {
+        match => ["[event][original]", "%{SYSLOG5424BASE} +%{GREEDYDATA:[@metadata][message]}"]
+        #overwrite => ["message"]
+        tag_on_failure => ["fortinet_grok_failure"]
+        remove_field => [ "message" ]
+    }
+
+    kv {
+        source => "[@metadata][message]"
+        #value_split => "="
+        #field_split => " "
+        whitespace => strict
+        target => "fgt"
+    }
+
+    # 2022-12-11T05:05:56Z # original log
+    # ISO8601
+    date {
+        match => ["[timestamp]", "ISO8601" ]
+        target => "@timestamp"
+    }
+
+}
+
+output {
+
+    # stdout {}
+
+    pipeline{
+        send_to => "syslog-fortinet-fortigate_2_ecsv2"
+    }
+
+}

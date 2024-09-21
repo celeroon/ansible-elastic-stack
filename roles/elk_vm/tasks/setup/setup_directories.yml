@@ -1,0 +1,32 @@
+---
+- name: Create the destination directory for certs
+  file:
+    path: "{{ elasticsearch_tools_path }}/certs"
+    state: directory
+    owner: root
+    group: elasticsearch
+    mode: '0755'
+
+- name: Create the kibana directory for certs
+  file:
+    path: "{{ kibana_config_path }}/certs"
+    state: directory
+    owner: root
+    group: kibana
+    mode: '0755'
+
+- name: Create the logstash directory for certs
+  file:
+    path: "{{ logstash_config_path }}/certs"
+    state: directory
+    owner: root
+    group: kibana
+    mode: '0755'
+
+- name: Create /setup-vm directory
+  file:
+    path: /setup-vm
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'

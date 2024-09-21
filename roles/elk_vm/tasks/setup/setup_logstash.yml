@@ -1,0 +1,114 @@
+---
+- name: Remove logstash-input-twitter plugin
+  command: /usr/share/logstash/bin/logstash-plugin remove logstash-input-twitter
+
+- name: Install logstash-filter-tld plugin with version 3.1.3
+  command: /usr/share/logstash/bin/logstash-plugin install --version 3.1.3 logstash-filter-tld
+
+- name: Copy elasticsearch-ca.pem to /etc/logstash/certs
+  copy:
+    src: "{{ elasticsearch_tools_path }}/elasticsearch-ca.pem"
+    dest: "{{ logstash_config_path }}/certs/elasticsearch-ca.pem"
+    mode: '0644'
+
+- name: Upload template components to Elasticsearch
+  uri:
+    url: "https://{{ vm_host_ip }}:9200/_component_template/{{ item | basename | regex_replace('.json', '') }}"
+    method: PUT
+    user: "elastic"
+    password: "{{ elastic_pass }}"
+    force_basic_auth: yes
+    body: "{{ lookup('file', item) }}"
+    body_format: json
+    headers:
+      Content-Type: "application/json"
+    validate_certs: yes
+    ca_path: "{{ ca_cert_path }}"
+  loop: "{{ lookup('fileglob', '{{ role_path }}/files/logstash/template-components/*.json', wantlist=True) }}"
+
+- name: Upload index templates to Elasticsearch
+  uri:
+    url: "https://{{ vm_host_ip }}:9200/_index_template/{{ item | basename | regex_replace('.json', '') }}"
+    method: PUT
+    user: "elastic"
+    password: "{{ elastic_pass }}"
+    force_basic_auth: yes
+    body: "{{ lookup('file', item) }}"
+    body_format: json
+    headers:
+      Content-Type: "application/json"
+    validate_certs: yes
+    ca_path: "{{ ca_cert_path }}"
+  loop: "{{ lookup('fileglob', '{{ role_path }}/files/logstash/index-templates/*.json', wantlist=True) }}"
+
+- name: Upload ILM policies to Elasticsearch
+  uri:
+    url: "https://{{ vm_host_ip }}:9200/_ilm/policy/{{ item | basename | regex_replace('.json', '') }}"
+    method: PUT
+    user: "elastic"
+    password: "{{ elastic_pass }}"
+    force_basic_auth: yes
+    body: "{{ lookup('file', item) }}"
+    body_format: json
+    headers:
+      Content-Type: "application/json"
+    validate_certs: yes
+    ca_path: "{{ ca_cert_path }}"
+  loop: "{{ lookup('fileglob', '{{ role_path }}/files/logstash/ilm/*.json', wantlist=True) }}"
+
+- name: Upload ingest pipeline to Elasticsearch
+  uri:
+    url: "https://{{ vm_host_ip }}:9200/_ingest/pipeline/add_event_ingested"
+    method: PUT
+    user: "elastic"
+    password: "{{ elastic_pass }}"
+    force_basic_auth: yes
+    body: "{{ lookup('file', '{{ role_path }}/files/logstash/add_event_ingested.json') }}"
+    body_format: json
+    headers:
+      Content-Type: "application/json"
+    validate_certs: yes
+    ca_path: "{{ ca_cert_path }}"
+
+- name: Upload FortiGate dashboards to Kibana
+  shell: |
+    curl -X POST --cacert {{ ca_cert_path }} -s -u "elastic:{{ elastic_pass }}" \
+        "https://{{ vm_host_ip }}:5601/api/saved_objects/_import" \
+        -H "kbn-xsrf: true" \
+        -H "Content-Type: multipart/form-data" \
+        -F "file=@/{{ role_path }}/files/logstash/fortigate-ELK-871.ndjson" > /dev/null
+  args:
+    executable: /bin/bash
+
+- name: Render Logstash configuration templates to /etc/logstash/conf.d/
+  template:
+    src: "logstash/{{ item }}.j2"
+    dest: "/etc/logstash/conf.d/{{ item }}"
+    mode: '0644'
+  loop:
+    - syslog-fortinet-common_ecs-output.conf
+    - syslog-fortinet-fortigate_2_ecsv2.conf
+    - syslog-fortinet-fortigate-input5424-kv.conf
+  loop_control:
+    label: "{{ item }}"
+
+- name: Copy pipelines.yml to /etc/logstash/
+  copy:
+    src: "logstash/pipelines.yml"
+    dest: "/etc/logstash/pipelines.yml"
+    mode: '0644'
+
+# Enable and start logstash service explicitly
+- name: Reload systemd to recognize any changes
+  systemd:
+    daemon_reload: yes
+
+- name: Enable Logstash service
+  systemd:
+    name: logstash
+    enabled: yes
+
+- name: Start Logstash service
+  systemd:
+    name: logstash
+    state: started

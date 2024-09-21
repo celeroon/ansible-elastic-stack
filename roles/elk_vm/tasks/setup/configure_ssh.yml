@@ -1,0 +1,15 @@
+- name: Permit root login via SSH
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    line: 'PermitRootLogin yes'
+    create: yes
+  notify: Restart SSH
+
+- name: Enable password authentication
+  replace:
+    path: /etc/ssh/sshd_config
+    regexp: 'PasswordAuthentication no'
+    replace: 'PasswordAuthentication yes'
+  notify: Restart SSH
+
+- meta: flush_handlers

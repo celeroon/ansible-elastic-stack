@@ -1,0 +1,48 @@
+---
+- name: Copy kibana.yml config file
+  template:
+    src: kibana.yml.j2
+    dest: "{{ kibana_config_path }}/kibana.yml"
+    owner: root
+    group: kibana
+    mode: '0644'
+
+- name: Generate Kibana encryption keys
+  shell: /usr/share/kibana/bin/kibana-encryption-keys generate
+  register: output
+
+- name: Extract xpack.encryptedSavedObjects.encryptionKey
+  set_fact:
+    encryptedSavedObjectsKey: "{{ output.stdout | regex_search('xpack.encryptedSavedObjects.encryptionKey: (.*)', '\\1') | first }}"
+
+- name: Extract xpack.reporting.encryptionKey
+  set_fact:
+    reportingKey: "{{ output.stdout | regex_search('xpack.reporting.encryptionKey: (.*)', '\\1') | first }}"
+
+- name: Extract xpack.security.encryptionKey
+  set_fact:
+    securityKey: "{{ output.stdout | regex_search('xpack.security.encryptionKey: (.*)', '\\1') | first }}"
+
+- name: Check if all keys were extracted
+  fail:
+    msg: "Failed to extract all encryption keys."
+  when: encryptedSavedObjectsKey is not defined or reportingKey is not defined or securityKey is not defined
+
+- name: Append encryption keys to kibana.yml
+  lineinfile:
+    path: /etc/kibana/kibana.yml
+    line: "{{ item }}"
+    insertafter: EOF
+  loop:
+    - ""
+    - "# Encryption keys generated on {{ ansible_date_time.date }} {{ ansible_date_time.time }} {{ ansible_date_time.tz }}"
+    - "xpack.encryptedSavedObjects.encryptionKey: {{ encryptedSavedObjectsKey }}"
+    - "xpack.reporting.encryptionKey: {{ reportingKey }}"
+    - "xpack.security.encryptionKey: {{ securityKey }}"
+  notify: 
+    - Reload systemd
+    - Enable kibana service
+    - Start kibana service
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
