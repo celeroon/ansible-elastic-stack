@@ -638,11 +638,11 @@ output {
         # stdout { codec => json  }
         # stdout { }
        elasticsearch {
-           hosts => "{{ vm_host_ip }}"
+           hosts => ["{{ vm_host_ip }}"]
            user => "elastic"
            password => "{{ elastic_pass }}"
            ssl_enabled => true
-           ssl_verification_mode => true
+           ssl_verification_mode => "full"
            #pipeline => "logs.fortinet_pipeline"
            pipeline => "add_event_ingested"
            data_stream => "true"
